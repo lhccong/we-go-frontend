@@ -4,7 +4,7 @@ export default [
     layout: false,
     routes: [{path: '/user/login', component: './User/Login'}, {path: '/user/register', component: './User/Register'}]
   },
-  {path: '/welcome', icon: 'smile', component: './Welcome', name: '首页', hideInMenu: true},
+  {path: '/welcome',layout: false, icon: 'smile', component: './Welcome', name: '首页', hideInMenu: true},
   {
     path: '/admin',
     icon: 'crown',

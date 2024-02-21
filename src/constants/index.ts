@@ -1,7 +1,7 @@
 /**
  * 本地后端地址
  */
-export const BACKEND_HOST_LOCAL = 'http://localhost:8869';
+export const BACKEND_HOST_LOCAL = 'http://172.21.12.27:8869';
 
 /**
  * 线上后端地址

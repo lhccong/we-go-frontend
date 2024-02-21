@@ -1,4 +1,11 @@
 declare namespace API {
+  type Badge = {
+    /** 徽章说明 */
+    describe?: string;
+    /** 徽章图像 */
+    img?: string;
+  };
+
   type BaseResponseBoolean_ = {
     code?: number;
     data?: boolean;
@@ -14,6 +21,12 @@ declare namespace API {
   type BaseResponseLong_ = {
     code?: number;
     data?: string;
+    message?: string;
+  };
+
+  type BaseResponsePageChatMessageResp_ = {
+    code?: number;
+    data?: PageChatMessageResp_;
     message?: string;
   };
 
@@ -59,6 +72,13 @@ declare namespace API {
     message?: string;
   };
 
+  type ChatMessageResp = {
+    fromUser?: UserInfo;
+    message?: Message;
+    /** 房间id */
+    roomId?: string;
+  };
+
   type checkUsingGETParams = {
     /** echostr */
     echostr?: string;
@@ -97,9 +117,56 @@ declare namespace API {
     userRole?: string;
   };
 
+  type Message = {
+    /** 消息内容 */
+    content?: string;
+    /** 消息id */
+    id?: string;
+    messageMark?: MessageMark;
+    reply?: ReplyMsg;
+    /** 消息发送时间 */
+    sendTime?: string;
+    /** 消息类型 1正常文本 2.爆赞 （点赞超过10）3.危险发言（举报超5） */
+    type?: number;
+    /** 消息链接映射 */
+    urlTitleMap?: Record<string, any>;
+  };
+
+  type MessageMark = {
+    /** 举报数 */
+    dislikeCount?: number;
+    /** 点赞数 */
+    likeCount?: number;
+    /** 该用户是否已经举报 0否 1是 */
+    userDislike?: number;
+    /** 该用户是否已经点赞 0否 1是 */
+    userLike?: number;
+  };
+
+  type MessageQueryRequest = {
+    current?: number;
+    pageSize?: number;
+    roomId?: string;
+    sortField?: string;
+    sortOrder?: string;
+  };
+
   type OrderItem = {
     asc?: boolean;
     column?: string;
+  };
+
+  type PageChatMessageResp_ = {
+    countId?: string;
+    current?: string;
+    maxLimit?: string;
+    optimizeCountSql?: boolean;
+    orders?: OrderItem[];
+    pages?: string;
+    records?: ChatMessageResp[];
+    searchCount?: boolean;
+    size?: string;
+    total?: string;
   };
 
   type PageRoomVo_ = {
@@ -139,6 +206,19 @@ declare namespace API {
     searchCount?: boolean;
     size?: string;
     total?: string;
+  };
+
+  type ReplyMsg = {
+    /** 是否可消息跳转 0否 1是 */
+    canCallback?: number;
+    /** 消息内容 */
+    content?: string;
+    /** 跳转间隔的消息条数 */
+    gapCount?: number;
+    /** 消息id */
+    id?: string;
+    /** 用户名称 */
+    username?: string;
   };
 
   type RoomQueryRequest = {
@@ -215,6 +295,18 @@ declare namespace API {
     userAvatar?: string;
     userName?: string;
     userRole?: string;
+  };
+
+  type UserInfo = {
+    /** 头像 */
+    avatar?: string;
+    badge?: Badge;
+    /** 归属地 */
+    locPlace?: string;
+    /** 用户id */
+    uid?: string;
+    /** 用户名称 */
+    username?: string;
   };
 
   type userLoginByWxOpenUsingGETParams = {
