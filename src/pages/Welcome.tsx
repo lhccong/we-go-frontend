@@ -19,6 +19,8 @@ const Welcome: React.FC = () => {
   const {initialState} = useModel('@@initialState');
   const [socket, setSocket] = useState<WebSocket | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [msgPageNum, setMsgPageNum] = useState(0);
+  const [initLoaded, setInitLoaded] = useState(false);
   const [msgTotal, setMsgTotal] = useState(0);
   const [messages, setMessages] = useState<API.ChatMessageResp[]>([]);
   const msgListRef = useRef(null);
@@ -32,7 +34,7 @@ const Welcome: React.FC = () => {
   //首先获取所有conversation
   useEffect(() => {
     const tokenValue = localStorage.getItem('tokenValue');
-    const newSocket = new WebSocket('ws://172.21.12.27:8090?token=' + tokenValue);
+    const newSocket = new WebSocket('ws://127.0.0.1:8090?token=' + tokenValue);
     setSocket(newSocket);
 
     // 在组件卸载时关闭WebSocket连接
@@ -63,15 +65,51 @@ const Welcome: React.FC = () => {
       socket.onmessage = (event) => {
         const res: API.Chat = JSON.parse(event.data);
         if (res.data && res.type === 2) {
+          let target: API.RoomVo | null = null;
+          const others: API.RoomVo[] = [];
           const {roomId} = res.data;
           if (activeConversation && roomId === Number(activeConversation.id)) {
             //设置聊天消息
-            console.log(...messages);
-
             setMessages([...messages, res.data])
             //设置左侧栏的消息
+            for (const conversation of conversations) {
+              if (conversation.id === roomId) {
+                console.log("conversation")
+                console.log(conversation)
+                target = {...conversation, content: res.data.content};
+              } else {
+
+                others.push(conversation);
+              }
+            }
+
           }
+          //消息来自其他聊天窗口（或者不属于任何一个聊天窗口）
+          else {
+            // alert("没进来")
+            for (const conversation of conversations) {
+              if (Number(conversation.id) === Number(roomId)) {
+                target = {...conversation, unreadNum: Number(conversation.unreadNum) + 1, content: res.data.message.content};
+              } else {
+                others.push(conversation);
+              }
+            }
+            if (!target) {
+              const {fromUser, message} = res.data;
+              target = {
+                id: roomId,
+                userId: fromUser.userId,
+                roomName: fromUser.name,
+                avatar: fromUser.avatar,
+                unreadNum: 1,
+                content: message.content,
+                activeTime: message.activeTime
+              }
+            }
+          }
+          setConversations([target as API.RoomVo, ...others]);
         }
+
       }
       //关闭连接
       socket.onclose = () => {
@@ -82,7 +120,7 @@ const Welcome: React.FC = () => {
         console.error('WebSocket发生错误:', error);
       };
     }
-  }, [socket, conversations]);
+  }, [socket, conversations, messages]);
 
   useEffect(() => {
     //获取与用户的所有聊天消息
@@ -95,7 +133,6 @@ const Welcome: React.FC = () => {
           if (res.data?.records) {
             setMessages(res.data?.records);
             setMsgTotal(Number(res.data?.total));
-
           }
         }
       })
@@ -116,6 +153,7 @@ const Welcome: React.FC = () => {
   };
   const changeConversation = (newConversation: API.RoomVo) => {
     if (!activeConversation || newConversation.id !== activeConversation.id) {
+      setInitLoaded(false);
       setActiveConversation({...newConversation, unreadNum: 0});
       setConversations(conversations.map(conversation =>
         conversation.id === newConversation.id ? {...newConversation, unread: 0} : conversation));
@@ -145,6 +183,29 @@ const Welcome: React.FC = () => {
       }
     });
   }, [total]);
+  const onYReachStart = () => {
+    setInitLoaded(true);
+    //防止多次加载
+    if (loadingMore) {
+      return;
+    }
+    if (initLoaded && activeConversation && messages.length < msgTotal) {
+      setLoadingMore(true);
+      setMsgPageNum(msgPageNum + 1);
+      listMessageVoByPageUsingPost({
+        current: msgPageNum,
+        pageSize: 10,
+        roomId: activeConversation.id
+      }).then(res => {
+        if (res.code === 0) {
+          if (res.data?.records) {
+            setMessages([...res.data?.records, ...messages]);
+            setLoadingMore(false);
+          }
+        }
+      })
+    }
+  };
   return (
     <MainContainer responsive>
       <Sidebar position="left" scrollable={false}>
@@ -208,9 +269,8 @@ const Welcome: React.FC = () => {
               <InfoButton/>
             </ConversationHeader.Actions>
           </ConversationHeader>
-          <MessageList ref={msgListRef} loadingMore={loadingMore}>
-
-            <MessageSeparator content={moment(activeConversation.activeTime).format('MMMDo a h:mm ')}/>
+          <MessageList ref={msgListRef} loadingMore={loadingMore} onYReachStart={onYReachStart}>
+            <MessageSeparator content={"111"}/>
             {
               messages.map((message, index) => {
                 const flag = message.fromUser?.uid === currentUser?.id;
