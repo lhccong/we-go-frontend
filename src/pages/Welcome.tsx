@@ -70,7 +70,6 @@ const Welcome: React.FC = () => {
         if (res.data && res.type === 2) {
           let target: API.RoomVo | null = null;
           const others: API.RoomVo[] = [];
-          console.log(res.data)
           const {roomId} = res.data;
           if (activeConversation && roomId === Number(activeConversation.id)) {
             //设置聊天消息
@@ -78,7 +77,7 @@ const Welcome: React.FC = () => {
             //设置左侧栏的消息
             for (const conversation of conversations) {
               if (Number(conversation.id) === roomId) {
-                target = {...conversation, content: res.data.content};
+                target = {...conversation, content: res.data.message.content};
               } else {
                 others.push(conversation);
               }
@@ -147,7 +146,7 @@ const Welcome: React.FC = () => {
   const sendMessage = (message: any) => {
     if (socket && socket.readyState === WebSocket.OPEN) {
       const command = {
-        type: activeConversation?.type,
+        type: 2,
         userId: activeConversation?.userId,
         data: message
 
@@ -161,7 +160,7 @@ const Welcome: React.FC = () => {
       setMsgPageNum(0);
       setActiveConversation({...newConversation, unreadNum: 0});
       setConversations(conversations.map(conversation =>
-        conversation.id === newConversation.id ? {...newConversation, unread: 0} : conversation));
+        Number(conversation.id) === Number(newConversation.id) ? {...newConversation, unreadNum: 0} : conversation));
     }
     // @ts-ignore
     msgListRef.current?.scrollToBottom();
@@ -223,7 +222,8 @@ const Welcome: React.FC = () => {
                     info={conversation.content}
                     unreadCnt={conversation.unreadNum}
                   >{
-                    conversation.type===1?<Avatar src={conversation.avatar } />:<Avatar src={conversation.avatar} status="available"/>
+                    conversation.type === 1 ? <Avatar src={conversation.avatar}/> :
+                      <Avatar src={conversation.avatar} status="available"/>
                   }
 
                   </Conversation>)
@@ -267,15 +267,16 @@ const Welcome: React.FC = () => {
                 {
                   messages.map((message, index) => {
                     const flag = message.fromUser?.uid === currentUser?.id;
-                    return <Message key={index} model={{
+                    return <Message style={{padding: 10}} key={index} model={{
                       message: message.message?.content,
                       sender: message.fromUser?.username,
                       direction: flag ? "outgoing" : "incoming",
                       position: "single"
                     }} avatarPosition={flag ? 'tr' : 'tl'}>
+                      {activeConversation.type === 1 ? <Message.Header sender={message.fromUser?.username}/> : ""}
                       <Avatar style={{width: 36, minWidth: 36, height: 36, minHeight: 36}}
                               src={message.fromUser?.avatar}
-                              name="Zoe"/>
+                              name={message.fromUser?.username}/>
                     </Message>
                   })
                 }
@@ -285,7 +286,7 @@ const Welcome: React.FC = () => {
                             onSend={() => {
                               setMessageInputValue("")
                               const msg = {
-                                type: 2,
+                                type: activeConversation?.type,
                                 toUid: activeConversation?.userId,
                                 content: messageInputValue,
                               }
