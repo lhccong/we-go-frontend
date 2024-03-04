@@ -1,8 +1,10 @@
 import { AvatarDropdown } from '@/components/RightContent/AvatarDropdown';
 import {
+  listFriendContentVoUsingPost,
   listMessageVoByPageUsingPost,
   listRoomVoByPageUsingPost,
 } from '@/services/backend/chatController';
+import { getUserVoByIdUsingGet } from '@/services/backend/userController';
 import { useModel } from '@@/exports';
 import { CodepenOutlined, MessageOutlined, UserOutlined } from '@ant-design/icons';
 import {
@@ -21,7 +23,7 @@ import {
   Sidebar,
 } from '@chatscope/chat-ui-kit-react';
 import '@chatscope/chat-ui-kit-styles/dist/default/styles.min.css';
-import { Card, Col, Collapse, Divider, Empty, Row, Tabs } from 'antd';
+import { Card, Col, Collapse, Divider, Empty, List, Row, Tabs } from 'antd';
 import moment from 'moment';
 import React, { useEffect, useRef, useState } from 'react';
 import UserProfile from './User/components/UserProfile';
@@ -31,12 +33,16 @@ const Welcome: React.FC = () => {
   const [socket, setSocket] = useState<WebSocket | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
   const [msgPageNum, setMsgPageNum] = useState(0);
+  const [activeKey, setActiveKey] = useState('1');
   const [initLoaded, setInitLoaded] = useState(false);
   const [msgTotal, setMsgTotal] = useState(0);
   const [messages, setMessages] = useState<API.ChatMessageResp[]>([]);
+  const [friendContent, setFriendContent] = useState<API.FriendContentVo[]>([]);
   const msgListRef = useRef(null);
   const { currentUser } = initialState || {};
   const [activeConversation, setActiveConversation] = useState<API.RoomVo>();
+  const [currentSelectUser, setCurrentSelectUser] = useState<API.FriendVo>();
+  const [friendMessage, setFriendMessage] = useState<API.FriendMessage>();
   const [conversations, setConversations] = useState<API.RoomVo[]>([]);
   // Set initial message input value to empty string
   const [messageInputValue, setMessageInputValue] = useState('');
@@ -54,6 +60,14 @@ const Welcome: React.FC = () => {
     };
   }, []);
 
+  //首先获取好友列表
+  useEffect(() => {
+    listFriendContentVoUsingPost().then((res) => {
+      if (res.data) {
+        return setFriendContent(res?.data);
+      }
+    });
+  }, []);
   useEffect(() => {
     if (socket && currentUser) {
       // 添加WebSocket事件处理程序
@@ -148,6 +162,38 @@ const Welcome: React.FC = () => {
     }
   }, [activeConversation]);
 
+  const getFriendDetail = (type: number, item: API.FriendVo) => {
+    //群聊详情
+    if (Number(type) === 1) {
+      const msgVo: API.FriendMessage = {
+        userName: item?.name,
+        type: type,
+        avatarUrl: item?.avatar,
+        numberId: item?.roomId + 's',
+        alias: '暂无备注',
+        signature: '暂无签名',
+        area: '中国',
+        status: 'none',
+      };
+      setFriendMessage(msgVo);
+    } //好友详情
+    else if (Number(type) === 2) {
+      getUserVoByIdUsingGet({ id: item.uid }).then((res) => {
+        const userVo = res.data;
+        const msgVo: API.FriendMessage = {
+          userName: userVo?.userName,
+          type: type,
+          avatarUrl: userVo?.userAvatar,
+          numberId: item?.uid,
+          alias: '暂无备注',
+          signature: '暂无签名',
+          area: '中国',
+          status: 'online',
+        };
+        setFriendMessage(msgVo);
+      });
+    }
+  };
   //发送消息
   const sendMessage = (message: any) => {
     if (socket && socket.readyState === WebSocket.OPEN) {
@@ -211,12 +257,17 @@ const Welcome: React.FC = () => {
       });
     }
   };
+
+  const onChange = (key: string) => {
+    setActiveKey(key);
+  };
   return (
     <Tabs
       tabPosition={'left'}
       style={{ height: '100vh' }}
       indicator={{ align: 'center' }}
-      defaultActiveKey="1"
+      activeKey={activeKey}
+      onChange={onChange}
       tabBarExtraContent={<AvatarDropdown />}
     >
       <Tabs.TabPane
@@ -357,26 +408,60 @@ const Welcome: React.FC = () => {
         <Row>
           <Col span={6} style={{ paddingLeft: 10 }}>
             <Collapse>
-              <Collapse.Panel key={'1'} header={'好友'}>
-                111
-              </Collapse.Panel>
-              <Collapse.Panel key={'2'} header={'群聊'}>
-                222
-              </Collapse.Panel>
+              {friendContent.map((friend) => (
+                <Collapse.Panel key={friend?.typeName + '1'} header={friend?.typeName}>
+                  <List
+                    itemLayout="horizontal"
+                    dataSource={friend.content}
+                    renderItem={(item) => (
+                      <List.Item
+                        onClick={() => {
+                          setCurrentSelectUser(item);
+                          getFriendDetail(Number(friend.type), item);
+                        }}
+                      >
+                        <List.Item.Meta avatar={<Avatar src={item.avatar} />} title={item.name} />
+                      </List.Item>
+                    )}
+                  />
+                </Collapse.Panel>
+              ))}
             </Collapse>
           </Col>
           <Divider type="vertical" style={{ height: '100vh' }} />
           <Col span={16} style={{ padding: 80 }}>
             <Card>
               <div style={{ padding: 120 }}>
-                <UserProfile
-                  avatarUrl="https://img0.baidu.com/it/u=3289461667,2295508139&fm=253&app=138&size=w931&n=0&f=JPEG&fmt=auto?sec=1709398800&t=edce1aab1fde64d9a4d59ab7f3cff730"
-                  userName="Likty_1225"
-                  status="online"
-                  onCall={() => console.log('拨打电话')}
-                  onMessage={() => console.log('发送信息')}
-                  onVideo={() => console.log('开始视频通话')}
-                />
+                {friendMessage ? (
+                  <UserProfile
+                    friendMessage={friendMessage}
+                    onCall={() => alert('功能尚未开通')}
+                    onMessage={() => {
+                      let sendMessageTarget = 0;
+                      for (let conversation of conversations) {
+                        if (conversation.id === currentSelectUser?.roomId) {
+                          setActiveConversation(conversation);
+                          sendMessageTarget = sendMessageTarget + 1;
+                        }
+                      }
+                      if (sendMessageTarget === 0) {
+                        const target: API.RoomVo = {
+                          id: currentSelectUser?.roomId,
+                          userId: currentSelectUser?.uid,
+                          type: friendMessage?.type,
+                          roomName: currentSelectUser?.name,
+                          avatar: currentSelectUser?.avatar,
+                        };
+                        setActiveConversation(target);
+                        setConversations([target, ...conversations]);
+                      }
+                      setActiveKey('1');
+                    }}
+                    onVideo={() => alert('功能尚未开通')}
+                  />
+                ) : (
+                  <Empty description={'快找小伙伴聊天吧 ( ゜- ゜)つロ'} />
+                )}
               </div>
             </Card>
           </Col>

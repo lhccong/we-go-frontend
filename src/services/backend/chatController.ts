@@ -2,6 +2,14 @@
 /* eslint-disable */
 import { request } from '@umijs/max';
 
+/** 获取好友列表 POST /api/chat/friend/list/vo */
+export async function listFriendContentVoUsingPost(options?: { [key: string]: any }) {
+  return request<API.BaseResponseListFriendContentVo_>('/api/chat/friend/list/vo', {
+    method: 'POST',
+    ...(options || {}),
+  });
+}
+
 /** 分页获取用户房间会话列表 POST /api/chat/list/page/vo */
 export async function listRoomVoByPageUsingPost(
   body: API.RoomQueryRequest,

@@ -7,48 +7,56 @@ import PropTypes from 'prop-types'; // 这个库用于定义组件的props的类
 import './UserProfile.less';
 
 // @ts-ignore
-const UserProfile = ({ avatarUrl, userName, status, onCall, onMessage, onVideo }) => {
+const UserProfile = ({ friendMessage, onCall, onMessage, onVideo }) => {
   // @ts-ignore
   return (
     <div className="user-profile">
       <div>
         <div style={{ display: 'flex' }}>
           <div>
-            <Avatar shape="square" size={64} src={avatarUrl} />
+            <Avatar shape="square" size={64} src={friendMessage.avatarUrl} />
           </div>
           <span style={{ paddingLeft: 20 }}>
             <div>
-              {userName}
+              {friendMessage.userName}
               <UserOutlined style={{ color: '#1760e7' }} />
             </div>
-            <div style={{ color: '#9E9E9E' }}>微信号：{userName}</div>
-            <div style={{ color: '#9E9E9E' }}>地区：{userName}</div>
+            <div style={{ color: '#9E9E9E' }}>微信号：{friendMessage.numberId}</div>
+            <div style={{ color: '#9E9E9E' }}>地区：{friendMessage.area}</div>
           </span>
         </div>
       </div>
       <Divider />
       <div>
-        <div style={{ display: 'flex' }}>
-          <div>
-            <div style={{ color: '#9E9E9E' }}>
-              状态
-              <span
-                style={{ paddingLeft: 20 }}
-                className={`user-status ${status === 'online' ? 'online' : 'offline'}`}
-              >
-                {status === 'online' ? '在线' : '离线'}
-              </span>
+        {friendMessage.status === 'none' ? (
+          <></>
+        ) : (
+          <>
+            <div style={{ display: 'flex' }}>
+              <div>
+                <div style={{ color: '#9E9E9E' }}>
+                  状态
+                  <span
+                    style={{ paddingLeft: 20 }}
+                    className={`user-status ${
+                      friendMessage.status === 'online' ? 'online' : 'offline'
+                    }`}
+                  >
+                    {friendMessage.status === 'online' ? '在线' : '离线'}
+                  </span>
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
+            <Divider />
+          </>
+        )}
       </div>
-      <Divider />
       <div>
         <div style={{ display: 'flex' }}>
           <div>
             <div style={{ color: '#9E9E9E' }}>
               <div style={{ color: '#9E9E9E' }}>
-                备注<span style={{ paddingLeft: 20 }}>点击添加备注</span>
+                备注<span style={{ paddingLeft: 20 }}>{friendMessage.alias}</span>
               </div>
             </div>
           </div>
@@ -60,7 +68,7 @@ const UserProfile = ({ avatarUrl, userName, status, onCall, onMessage, onVideo }
           <div>
             <div style={{ color: '#9E9E9E' }}>
               <div style={{ color: '#9E9E9E' }}>
-                个性签名<span style={{ paddingLeft: 20 }}>哈哈哈哈我是签名</span>
+                个性签名<span style={{ paddingLeft: 20 }}>{friendMessage.signature}</span>
               </div>
             </div>
           </div>
@@ -75,7 +83,7 @@ const UserProfile = ({ avatarUrl, userName, status, onCall, onMessage, onVideo }
             alignItems: 'center',
           }}
         >
-          <div style={{ textAlign: 'center', cursor: 'pointer' }}>
+          <div style={{ textAlign: 'center', cursor: 'pointer' }} onClick={onMessage}>
             <FontAwesomeIcon
               icon={faComment}
               style={{
@@ -84,7 +92,7 @@ const UserProfile = ({ avatarUrl, userName, status, onCall, onMessage, onVideo }
             />
             <div>发消息</div>
           </div>
-          <div style={{ paddingLeft: 50, textAlign: 'center', cursor: 'pointer' }}>
+          <div style={{ paddingLeft: 50, textAlign: 'center', cursor: 'pointer' }} onClick={onCall}>
             <PhoneOutlined
               style={{
                 fontSize: 25,
@@ -92,7 +100,7 @@ const UserProfile = ({ avatarUrl, userName, status, onCall, onMessage, onVideo }
             />
             <div>语音聊天</div>
           </div>
-          <div style={{ paddingLeft: 50, textAlign: 'center', cursor: 'pointer' }}>
+          <div style={{ paddingLeft: 50, textAlign: 'center', cursor: 'pointer' }} onClick={onVideo}>
             <FontAwesomeIcon
               icon={faVideo}
               style={{
@@ -108,9 +116,7 @@ const UserProfile = ({ avatarUrl, userName, status, onCall, onMessage, onVideo }
 };
 
 UserProfile.propTypes = {
-  avatarUrl: PropTypes.string.isRequired,
-  userName: PropTypes.string.isRequired,
-  status: PropTypes.oneOf(['online', 'offline']),
+  friendMessage: PropTypes.object as API.FriendMessage,
   onCall: PropTypes.func,
   onMessage: PropTypes.func,
   onVideo: PropTypes.func,
