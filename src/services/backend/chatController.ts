@@ -39,3 +39,18 @@ export async function listMessageVoByPageUsingPost(
     ...(options || {}),
   });
 }
+
+/** 获取群聊或者用户信息 POST /api/chat/search/friend/vo */
+export async function searchFriendVoUsingPost(
+  // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
+  params: API.searchFriendVoUsingPOSTParams,
+  options?: { [key: string]: any },
+) {
+  return request<API.BaseResponseAddFriendVo_>('/api/chat/search/friend/vo', {
+    method: 'POST',
+    params: {
+      ...params,
+    },
+    ...(options || {}),
+  });
+}

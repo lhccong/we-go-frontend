@@ -1,4 +1,19 @@
 declare namespace API {
+  type AddFriendVo = {
+    avatar?: string;
+    friendTarget?: number;
+    name?: string;
+    roomId?: string;
+    type?: number;
+    uid?: string;
+  };
+
+  type BaseResponseAddFriendVo_ = {
+    code?: number;
+    data?: AddFriendVo;
+    message?: string;
+  };
+
   type BaseResponseBoolean_ = {
     code?: number;
     data?: boolean;
@@ -236,6 +251,10 @@ declare namespace API {
     tokenSessionTimeout?: string;
     tokenTimeout?: string;
     tokenValue?: string;
+  };
+
+  type searchFriendVoUsingPOSTParams = {
+    id?: string;
   };
 
   type TokenLoginUserVo = {
