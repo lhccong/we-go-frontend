@@ -1,19 +1,36 @@
-import { userLogoutUsingPost } from '@/services/backend/userController';
+import {updateMyUserUsingPost, userLogoutUsingPost} from '@/services/backend/userController';
 import { LogoutOutlined, SettingOutlined, UserOutlined } from '@ant-design/icons';
 import { history, useModel } from '@umijs/max';
-import { Avatar, Button, Space } from 'antd';
+import {Avatar, Button, Form, Input, message, Modal, Space} from 'antd';
 import { stringify } from 'querystring';
 import type { MenuInfo } from 'rc-menu/lib/interface';
-import React, { useCallback } from 'react';
+import React, {useCallback, useState} from 'react';
 import { flushSync } from 'react-dom';
 import { Link } from 'umi';
 import HeaderDropdown from '../HeaderDropdown';
+import {faPenToSquare} from "@fortawesome/free-solid-svg-icons";
+import {FontAwesomeIcon} from "@fortawesome/react-fontawesome";
 
 export type GlobalHeaderRightProps = {
   menu?: boolean;
 };
 
 export const AvatarDropdown: React.FC<GlobalHeaderRightProps> = ({ menu }) => {
+
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [form] = Form.useForm();
+
+  const showModal = () => {
+    setIsModalOpen(true);
+  };
+
+  const handleOk = () => {
+    setIsModalOpen(false);
+  };
+
+  const handleCancel = () => {
+    setIsModalOpen(false);
+  };
   /**
    * 退出登录，并且将当前的 url 保存
    */
@@ -35,7 +52,17 @@ export const AvatarDropdown: React.FC<GlobalHeaderRightProps> = ({ menu }) => {
   };
 
   const { initialState, setInitialState } = useModel('@@initialState');
+  const onFinish = async (values: any) => {
+    const res = await updateMyUserUsingPost(values);
+    if (res.code===0){
+      message.success("更新成功啦");
+      setIsModalOpen(false);
+    }
+  };
 
+  const onFinishFailed = (errorInfo: any) => {
+    console.log('Failed:', errorInfo);
+  };
   const onMenuClick = useCallback(
     (event: MenuInfo) => {
       const { key } = event;
@@ -46,13 +73,17 @@ export const AvatarDropdown: React.FC<GlobalHeaderRightProps> = ({ menu }) => {
         loginOut();
         return;
       }
+      if (key === 'edit') {
+        showModal();
+        return;
+      }
       history.push(`/account/${key}`);
     },
     [setInitialState],
   );
 
   const { currentUser } = initialState || {};
-
+  form.setFieldsValue(currentUser);
   if (!currentUser) {
     return (
       <Link to="/user/login">
@@ -86,9 +117,47 @@ export const AvatarDropdown: React.FC<GlobalHeaderRightProps> = ({ menu }) => {
       icon: <LogoutOutlined />,
       label: '退出登录',
     },
+    {
+      key: 'edit',
+      icon: <FontAwesomeIcon icon={faPenToSquare} />,
+      label: '修改信息',
+    }
   ];
 
   return (
+    <>
+    <Modal footer={null} title="修改个人信息" open={isModalOpen} onOk={handleOk} onCancel={handleCancel}>
+      <Form
+        form={form}
+        layout={"vertical"}
+        name="basic"
+        style={{paddingTop:20}}
+        initialValues={{ remember: true }}
+        onFinish={onFinish}
+        onFinishFailed={onFinishFailed}
+        autoComplete="off"
+      >
+        <Form.Item
+          label="名字"
+          name="userName"
+
+        >
+          <Input/>
+        </Form.Item>
+
+        <Form.Item
+          label="头像（仅支持在线地址）"
+          name="userAvatar"
+        >
+          <Input/>
+        </Form.Item>
+        <Form.Item wrapperCol={{ offset: 10, span: 16 }}>
+          <Button type="primary" htmlType="submit">
+            确定
+          </Button>
+        </Form.Item>
+      </Form>
+    </Modal>
     <HeaderDropdown
       menu={{
         selectedKeys: [],
@@ -105,6 +174,7 @@ export const AvatarDropdown: React.FC<GlobalHeaderRightProps> = ({ menu }) => {
         {/*<span className="anticon">{currentUser?.userName ?? '无名'}</span>*/}
       </Space>
     </HeaderDropdown>
+    </>
   );
 };
 

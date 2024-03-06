@@ -4,11 +4,13 @@
 // API 唯一标识：
 import * as chatController from './chatController';
 import * as fileController from './fileController';
+import * as noticeMessageController from './noticeMessageController';
 import * as userController from './userController';
 import * as wxMpController from './wxMpController';
 export default {
   wxMpController,
   chatController,
   fileController,
+  noticeMessageController,
   userController,
 };

@@ -26,6 +26,12 @@ declare namespace API {
     message?: string;
   };
 
+  type BaseResponseListNoticeMessageVo_ = {
+    code?: number;
+    data?: NoticeMessageVo[];
+    message?: string;
+  };
+
   type BaseResponseLoginUserVO_ = {
     code?: number;
     data?: LoginUserVO;
@@ -35,6 +41,12 @@ declare namespace API {
   type BaseResponseLong_ = {
     code?: number;
     data?: string;
+    message?: string;
+  };
+
+  type BaseResponseMessageNumVo_ = {
+    code?: number;
+    data?: MessageNumVo;
     message?: string;
   };
 
@@ -104,8 +116,18 @@ declare namespace API {
     timestamp?: string;
   };
 
+  type connectUsingGETParams = {
+    /** token */
+    token?: string;
+  };
+
   type DeleteRequest = {
     id?: string;
+  };
+
+  type FriendAddRequest = {
+    remark?: string;
+    userId?: string;
   };
 
   type FriendContentVo = {
@@ -155,12 +177,26 @@ declare namespace API {
     type?: number;
   };
 
+  type MessageNumVo = {
+    noticeNum?: string;
+  };
+
   type MessageQueryRequest = {
     current?: number;
     pageSize?: number;
     roomId?: string;
     sortField?: string;
     sortOrder?: string;
+  };
+
+  type NoticeMessageVo = {
+    avatar?: string;
+    createTime?: string;
+    name?: string;
+    noticeContent?: string;
+    noticeType?: number;
+    title?: string;
+    userId?: string;
   };
 
   type OrderItem = {
@@ -255,6 +291,10 @@ declare namespace API {
 
   type searchFriendVoUsingPOSTParams = {
     id?: string;
+  };
+
+  type SseEmitter = {
+    timeout?: string;
   };
 
   type TokenLoginUserVo = {

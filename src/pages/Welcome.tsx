@@ -1,13 +1,18 @@
-import {AvatarDropdown} from '@/components/RightContent/AvatarDropdown';
+import { AvatarDropdown } from '@/components/RightContent/AvatarDropdown';
+import { BACKEND_HOST_LOCAL } from '@/constants';
 import {
   listFriendContentVoUsingPost,
   listMessageVoByPageUsingPost,
   listRoomVoByPageUsingPost,
   searchFriendVoUsingPost,
 } from '@/services/backend/chatController';
-import {getUserVoByIdUsingGet} from '@/services/backend/userController';
-import {useModel} from '@@/exports';
-import {CodepenOutlined, MessageOutlined, UserOutlined} from '@ant-design/icons';
+import {
+  getMessageNoticeListUsingGet,
+  getMessageNumUsingGet,
+} from '@/services/backend/noticeMessageController';
+import { getUserVoByIdUsingGet } from '@/services/backend/userController';
+import { useModel } from '@@/exports';
+import { MessageOutlined, UserOutlined } from '@ant-design/icons';
 import {
   Avatar,
   ChatContainer,
@@ -24,19 +29,39 @@ import {
   Sidebar,
 } from '@chatscope/chat-ui-kit-react';
 import '@chatscope/chat-ui-kit-styles/dist/default/styles.min.css';
-import {faMagnifyingGlass, faUserPlus} from '@fortawesome/free-solid-svg-icons';
-import {FontAwesomeIcon} from '@fortawesome/react-fontawesome';
-import {Card, Col, Collapse, Empty, Input, List, Modal, Row, Tabs} from 'antd';
+import {
+  faEnvelopeOpenText,
+  faMagnifyingGlass,
+  faSquareCheck,
+  faUserPlus,
+  faXmark,
+} from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import {
+  Badge,
+  Card,
+  Col,
+  Collapse,
+  Divider,
+  Empty,
+  Input,
+  List,
+  Modal,
+  Row,
+  Skeleton,
+  Tabs,
+} from 'antd';
 import Search from 'antd/es/input/Search';
 import moment from 'moment';
-import React, {useEffect, useRef, useState} from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import InfiniteScroll from 'react-infinite-scroll-component';
 import UserAddProfile from './User/components/UserAddProfile';
 import UserProfile from './User/components/UserProfile';
-import {BACKEND_HOST_LOCAL} from "@/constants";
 
 const Welcome: React.FC = () => {
-  const {initialState} = useModel('@@initialState');
+  const { initialState } = useModel('@@initialState');
   const [socket, setSocket] = useState<WebSocket | null>(null);
+  const [eventSource, setEventSource] = useState<EventSource | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [msgPageNum, setMsgPageNum] = useState(0);
@@ -46,47 +71,67 @@ const Welcome: React.FC = () => {
   const [messages, setMessages] = useState<API.ChatMessageResp[]>([]);
   const [friendContent, setFriendContent] = useState<API.FriendContentVo[]>([]);
   const msgListRef = useRef(null);
-  const {currentUser} = initialState || {};
+  const { currentUser } = initialState || {};
   const [activeConversation, setActiveConversation] = useState<API.RoomVo>();
+  const [messageNum, setMessageNum] = useState<API.MessageNumVo>();
   const [currentSelectUser, setCurrentSelectUser] = useState<API.FriendVo>();
   const [friendMessage, setFriendMessage] = useState<API.FriendMessage>();
   const [addFriendMessage, setAddFriendMessage] = useState<API.AddFriendVo>();
   const [conversations, setConversations] = useState<API.RoomVo[]>([]);
+  const [noticeMessages, setNoticeMessages] = useState<API.NoticeMessageVo[]>([]);
   // Set initial message input value to empty string
   const [messageInputValue, setMessageInputValue] = useState('');
   const [total, setTotal] = useState<string>();
 
+  const loadMoreData = () => {};
+
+  useEffect(() => {
+    getMessageNumUsingGet().then((res) => {
+      setMessageNum(res.data);
+    });
+  }, []);
   useEffect(() => {
     const tokenValue = localStorage.getItem('tokenValue');
-    let url = BACKEND_HOST_LOCAL + "/api/notice/userConnect?token=" + tokenValue
-    let eventSource = new EventSource(url);
+    let url = BACKEND_HOST_LOCAL + '/api/notice/userConnect?token=' + tokenValue;
+    const eventSource = new EventSource(url);
+    setEventSource(eventSource);
     console.log('SSE连接已建立');
-    eventSource.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-      console.log(data);
-      // 处理数据
-    };
-
-    eventSource.onerror = (error) => {
-      // 处理连接错误
-      console.error("SSE错误:", error);
-      eventSource.close();
-      // 关闭错误的连接
-      eventSource.close();
-      // 设置延时尝试重新连接
-      setTimeout(() => {
-        console.log('重新连接中...');
-        // 递归调用以重新初始化SSE连接
-        eventSource = new EventSource(url);
-      }, 5000); // 5秒后重连
-    };
 
     return () => {
       console.log('SSE断开');
       eventSource.close(); // 组件卸载时关闭SSE连接
     };
   }, []); // 空数组表示这个effect只在组件加载时运行一次
+  useEffect(() => {
+    if (eventSource) {
+      const tokenValue = localStorage.getItem('tokenValue');
+      let url = BACKEND_HOST_LOCAL + '/api/notice/userConnect?token=' + tokenValue;
+      eventSource.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        console.log(data);
+        setMessageNum({
+          ...messageNum,
+          noticeNum: ((Number(messageNum?.noticeNum) || 0) + 1).toString(),
+        });
+        // 处理数据
+      };
 
+      eventSource.onerror = (error) => {
+        // 处理连接错误
+        console.error('SSE错误:', error);
+        eventSource.close();
+        // 关闭错误的连接
+        eventSource.close();
+        // 设置延时尝试重新连接
+        setTimeout(() => {
+          console.log('重新连接中...');
+          // 递归调用以重新初始化SSE连接
+          const eventSource = new EventSource(url);
+          setEventSource(eventSource);
+        }, 5000); // 5秒后重连
+      };
+    }
+  }, [messageNum]);
 
   useEffect(() => {
     const tokenValue = localStorage.getItem('tokenValue');
@@ -97,15 +142,6 @@ const Welcome: React.FC = () => {
     return () => {
       newSocket.close();
     };
-  }, []);
-
-  //首先获取好友列表
-  useEffect(() => {
-    listFriendContentVoUsingPost().then((res) => {
-      if (res.data) {
-        return setFriendContent(res?.data);
-      }
-    });
   }, []);
   useEffect(() => {
     if (socket && currentUser) {
@@ -121,7 +157,7 @@ const Welcome: React.FC = () => {
         setInterval(() => {
           if (socket.readyState === WebSocket.OPEN) {
             // 发送心跳消息，可以是任何你希望的消息，比如 'ping'
-            socket.send(JSON.stringify({type: 4}));
+            socket.send(JSON.stringify({ type: 4 }));
           }
         }, 10000); // 每10秒发送一次心跳消息
       };
@@ -131,14 +167,14 @@ const Welcome: React.FC = () => {
         if (res.data && res.type === 2) {
           let target: API.RoomVo | null = null;
           const others: API.RoomVo[] = [];
-          const {roomId} = res.data;
+          const { roomId } = res.data;
           if (activeConversation && roomId === Number(activeConversation.id)) {
             //设置聊天消息
             setMessages([...messages, res.data]);
             //设置左侧栏的消息
             for (const conversation of conversations) {
               if (Number(conversation.id) === roomId) {
-                target = {...conversation, content: res.data.message.content};
+                target = { ...conversation, content: res.data.message.content };
               } else {
                 others.push(conversation);
               }
@@ -158,7 +194,7 @@ const Welcome: React.FC = () => {
               }
             }
             if (!target) {
-              const {fromUser, message} = res.data;
+              const { fromUser, message } = res.data;
               target = {
                 id: roomId,
                 userId: fromUser.userId,
@@ -217,7 +253,7 @@ const Welcome: React.FC = () => {
       setFriendMessage(msgVo);
     } //好友详情
     else if (Number(type) === 2) {
-      getUserVoByIdUsingGet({id: item.uid}).then((res) => {
+      getUserVoByIdUsingGet({ id: item.uid }).then((res) => {
         const userVo = res.data;
         const msgVo: API.FriendMessage = {
           userName: userVo?.userName,
@@ -248,11 +284,11 @@ const Welcome: React.FC = () => {
     if (!activeConversation || newConversation.id !== activeConversation.id) {
       setInitLoaded(false);
       setMsgPageNum(0);
-      setActiveConversation({...newConversation, unreadNum: 0});
+      setActiveConversation({ ...newConversation, unreadNum: 0 });
       setConversations(
         conversations.map((conversation) =>
           Number(conversation.id) === Number(newConversation.id)
-            ? {...newConversation, unreadNum: 0}
+            ? { ...newConversation, unreadNum: 0 }
             : conversation,
         ),
       );
@@ -297,7 +333,19 @@ const Welcome: React.FC = () => {
     }
   };
 
-  const onChange = (key: string) => {
+  const onChange = async (key: string) => {
+    if (key === '2') {
+      const res = await listFriendContentVoUsingPost();
+      if (res.data) {
+        setFriendContent(res?.data);
+      }
+    }
+    if (key === '3') {
+      const res = await getMessageNoticeListUsingGet();
+      if (res.data) {
+        setNoticeMessages(res?.data);
+      }
+    }
     setActiveKey(key);
   };
 
@@ -314,7 +362,7 @@ const Welcome: React.FC = () => {
   };
   //查找用户或群聊
   const findUserOrGroup = async (value: string) => {
-    searchFriendVoUsingPost({id: value}).then((res) => {
+    searchFriendVoUsingPost({ id: value }).then((res) => {
       setAddFriendMessage(res.data);
     });
   };
@@ -322,20 +370,20 @@ const Welcome: React.FC = () => {
   return (
     <Tabs
       tabPosition={'left'}
-      style={{height: '100vh'}}
-      indicator={{align: 'center'}}
+      style={{ height: '100vh' }}
+      indicator={{ align: 'center' }}
       activeKey={activeKey}
       onChange={onChange}
-      tabBarExtraContent={<AvatarDropdown/>}
+      tabBarExtraContent={<AvatarDropdown />}
     >
       <Tabs.TabPane
-        style={{height: '100vh', paddingLeft: '0'}}
-        icon={<MessageOutlined style={{fontSize: '26px'}}/>}
+        style={{ height: '100vh', paddingLeft: '0' }}
+        icon={<MessageOutlined style={{ fontSize: '26px' }} />}
         key="1"
       >
         <MainContainer responsive>
-          <Sidebar style={{borderColor: '#DEDDDC'}} position="left" scrollable={false}>
-            <ChatSearch placeholder="搜索"/>
+          <Sidebar style={{ borderColor: '#DEDDDC' }} position="left" scrollable={false}>
+            <ChatSearch placeholder="搜索" />
             <ConversationList>
               {conversations.map((conversation) => (
                 <Conversation
@@ -348,9 +396,9 @@ const Welcome: React.FC = () => {
                   unreadCnt={conversation.unreadNum}
                 >
                   {conversation.type === 1 ? (
-                    <Avatar src={conversation.avatar}/>
+                    <Avatar src={conversation.avatar} />
                   ) : (
-                    <Avatar src={conversation.avatar} status="available"/>
+                    <Avatar src={conversation.avatar} status="available" />
                   )}
                 </Conversation>
               ))}
@@ -369,37 +417,36 @@ const Welcome: React.FC = () => {
             >
               <div
                 style={{
-                  backgroundImage: 'url(/images/empty.png)',
                   backgroundSize: '402px 204px',
                   marginBottom: 32,
                   width: 402,
                   height: 204,
                 }}
               />
-              <div style={{color: ' #8896b8', fontSize: 14, lineHeight: '20em'}}>
-                <Empty description={'快找小伙伴聊天吧 ( ゜- ゜)つロ'}/>.
+              <div style={{ color: ' #8896b8', fontSize: 14, lineHeight: '20em' }}>
+                <Empty description={'快找小伙伴聊天吧 ( ゜- ゜)つロ'} />.
               </div>
             </div>
           ) : (
             <ChatContainer>
               <ConversationHeader>
-                <ConversationHeader.Back/>
-                <Avatar src={activeConversation.avatar} name={activeConversation.id}/>
+                <ConversationHeader.Back />
+                <Avatar src={activeConversation.avatar} name={activeConversation.id} />
                 <ConversationHeader.Content
                   userName={activeConversation.roomName}
                   info={moment(activeConversation.activeTime).format('MMMDo a h:mm ')}
                 />
                 <ConversationHeader.Actions>
-                  <InfoButton/>
+                  <InfoButton />
                 </ConversationHeader.Actions>
               </ConversationHeader>
               <MessageList ref={msgListRef} loadingMore={loadingMore} onYReachStart={onYReachStart}>
-                <MessageSeparator content={'上次的聊天'}/>
+                <MessageSeparator content={'上次的聊天'} />
                 {messages.map((message, index) => {
                   const flag = message.fromUser?.uid === currentUser?.id;
                   return (
                     <Message
-                      style={{padding: 10}}
+                      style={{ padding: 10 }}
                       key={index}
                       model={{
                         message: message.message?.content,
@@ -410,12 +457,12 @@ const Welcome: React.FC = () => {
                       avatarPosition={flag ? 'tr' : 'tl'}
                     >
                       {activeConversation.type === 1 ? (
-                        <Message.Header sender={message.fromUser?.username}/>
+                        <Message.Header sender={message.fromUser?.username} />
                       ) : (
                         ''
                       )}
                       <Avatar
-                        style={{width: 36, minWidth: 36, height: 36, minHeight: 36}}
+                        style={{ width: 36, minWidth: 36, height: 36, minHeight: 36 }}
                         src={message.fromUser?.avatar}
                         name={message.fromUser?.username}
                       />
@@ -446,7 +493,7 @@ const Welcome: React.FC = () => {
                   };
                   setMessages([...messages, msgVo]);
                   setConversations([
-                    {...activeConversation, content: messageInputValue},
+                    { ...activeConversation, content: messageInputValue },
                     ...conversations.filter(
                       (conversation) => conversation.id !== activeConversation?.id,
                     ),
@@ -459,13 +506,13 @@ const Welcome: React.FC = () => {
         </MainContainer>
       </Tabs.TabPane>
       <Tabs.TabPane
-        icon={<UserOutlined style={{fontSize: '26px'}}/>}
-        style={{height: '100vh', paddingLeft: '0'}}
+        icon={<UserOutlined style={{ fontSize: '26px' }} />}
+        style={{ height: '100vh', paddingLeft: '0' }}
         key="2"
       >
-        <Modal title="添加好友" open={isAddModalOpen} onOk={handleAddOk} onCancel={handleAddCancel}>
-          <Search placeholder="input search text" allowClear onSearch={findUserOrGroup}/>
-          <Card style={{marginTop: 10}}>
+        <Modal footer={null} title="添加好友" open={isAddModalOpen} onOk={handleAddOk} onCancel={handleAddCancel}>
+          <Search placeholder="input search text" allowClear onSearch={findUserOrGroup} />
+          <Card style={{ marginTop: 10 }}>
             {addFriendMessage ? (
               <UserAddProfile
                 friendMessage={addFriendMessage}
@@ -494,18 +541,18 @@ const Welcome: React.FC = () => {
                 }}
               />
             ) : (
-              <Empty description={'暂无此人o((>ω< ))o'}/>
+              <Empty description={'暂无此人o((>ω< ))o'} />
             )}
           </Card>
         </Modal>
         <Row>
-          <Col span={4} style={{borderRight: '1px solid #DEDDDC', height: '100vh'}}>
+          <Col span={4} style={{ borderRight: '1px solid #DEDDDC', height: '100vh' }}>
             <Row>
-              <Col span={18} style={{padding: 10}}>
-                <Input placeholder="搜索" prefix={<FontAwesomeIcon icon={faMagnifyingGlass}/>}/>
+              <Col span={18} style={{ padding: 10 }}>
+                <Input placeholder="搜索" prefix={<FontAwesomeIcon icon={faMagnifyingGlass} />} />
               </Col>
-              <Col span={6} style={{fontSize: '20px', padding: 10}}>
-                <FontAwesomeIcon icon={faUserPlus} onClick={showAddModal}/>
+              <Col span={6} style={{ fontSize: '20px', padding: 10 }}>
+                <FontAwesomeIcon icon={faUserPlus} onClick={showAddModal} />
               </Col>
             </Row>
             <Collapse bordered={false}>
@@ -521,7 +568,7 @@ const Welcome: React.FC = () => {
                           getFriendDetail(Number(friend.type), item);
                         }}
                       >
-                        <List.Item.Meta avatar={<Avatar src={item.avatar}/>} title={item.name}/>
+                        <List.Item.Meta avatar={<Avatar src={item.avatar} />} title={item.name} />
                       </List.Item>
                     )}
                   />
@@ -529,9 +576,9 @@ const Welcome: React.FC = () => {
               ))}
             </Collapse>
           </Col>
-          <Col span={18} style={{padding: 80}}>
+          <Col span={18} style={{ padding: 80 }}>
             <Card>
-              <div style={{padding: 120}}>
+              <div style={{ padding: 120 }}>
                 {friendMessage ? (
                   <UserProfile
                     friendMessage={friendMessage}
@@ -560,7 +607,7 @@ const Welcome: React.FC = () => {
                     onVideo={() => alert('功能尚未开通')}
                   />
                 ) : (
-                  <Empty description={'快找小伙伴聊天吧 ( ゜- ゜)つロ'}/>
+                  <Empty description={'快找小伙伴聊天吧 ( ゜- ゜)つロ'} />
                 )}
               </div>
             </Card>
@@ -568,11 +615,68 @@ const Welcome: React.FC = () => {
         </Row>
       </Tabs.TabPane>
       <Tabs.TabPane
-        icon={<CodepenOutlined style={{fontSize: '26px'}}/>}
-        style={{height: '100vh', paddingLeft: '0'}}
+        icon={
+          <Badge count={messageNum?.noticeNum}>
+            <FontAwesomeIcon style={{ fontSize: '26px' }} icon={faEnvelopeOpenText} />
+          </Badge>
+        }
+        style={{ height: '100vh'}}
         key="3"
       >
-        Content of Tab Pane 3
+        <div
+          id="scrollableDiv"
+          style={{
+            height: '100vh',
+            overflow: 'auto',
+            padding: 100,
+            border: '1px solid rgba(140, 140, 140, 0.35)',
+          }}
+        >
+          <InfiniteScroll
+            dataLength={noticeMessages.length}
+            next={loadMoreData}
+            hasMore={noticeMessages.length < 1}
+            loader={<Skeleton avatar paragraph={{ rows: 1 }} active />}
+            endMessage={<Divider plain>没有了 🤐</Divider>}
+            scrollableTarget="scrollableDiv"
+          >
+            <List
+              itemLayout="horizontal"
+              dataSource={noticeMessages}
+              renderItem={(item, index) => (
+                <Card style={{ marginTop: 10 }}>
+                  <List.Item
+                    style={{ padding: 20, marginTop: 10 }}
+                    actions={[
+                      <a>
+                        <FontAwesomeIcon
+                          style={{ fontSize: '26px', color: 'green' }}
+                          icon={faSquareCheck}
+                        />
+                      </a>,
+                      <a>
+                        <FontAwesomeIcon
+                          style={{ fontSize: '26px', color: 'red' }}
+                          icon={faXmark}
+                        />
+                      </a>,
+                    ]}
+                  >
+                    <List.Item.Meta
+                      avatar={
+                        <Badge count={1}>
+                          <Avatar src={item.avatar} />
+                        </Badge>
+                      }
+                      title={item.title}
+                      description={item.noticeContent}
+                    />
+                  </List.Item>
+                </Card>
+              )}
+            />
+          </InfiniteScroll>
+        </div>
       </Tabs.TabPane>
     </Tabs>
   );
