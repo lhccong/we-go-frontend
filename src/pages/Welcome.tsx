@@ -7,8 +7,11 @@ import {
   searchFriendVoUsingPost,
 } from '@/services/backend/chatController';
 import {
+  addFriendUsingPost,
   getMessageNoticeListUsingGet,
   getMessageNumUsingGet,
+  handleMessageNoticeUsingPost,
+  readMessageNoticeUsingGet,
 } from '@/services/backend/noticeMessageController';
 import { getUserVoByIdUsingGet } from '@/services/backend/userController';
 import { useModel } from '@@/exports';
@@ -34,6 +37,7 @@ import {
   faMagnifyingGlass,
   faSquareCheck,
   faUserPlus,
+  faVolumeHigh,
   faXmark,
 } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -45,7 +49,7 @@ import {
   Divider,
   Empty,
   Input,
-  List,
+  List, message,
   Modal,
   Row,
   Skeleton,
@@ -64,6 +68,7 @@ const Welcome: React.FC = () => {
   const [eventSource, setEventSource] = useState<EventSource | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isRemarkModalOpen, setIsRemarkModalOpen] = useState(false);
   const [msgPageNum, setMsgPageNum] = useState(0);
   const [activeKey, setActiveKey] = useState('1');
   const [initLoaded, setInitLoaded] = useState(false);
@@ -82,6 +87,7 @@ const Welcome: React.FC = () => {
   // Set initial message input value to empty string
   const [messageInputValue, setMessageInputValue] = useState('');
   const [total, setTotal] = useState<string>();
+  const [remark, setRemark] = useState<string>('我是' + currentUser?.userName);
 
   const loadMoreData = () => {};
 
@@ -236,7 +242,48 @@ const Welcome: React.FC = () => {
       });
     }
   }, [activeConversation]);
-
+  //消息已读
+  const onRead = (id: string | undefined, index: number) => {
+    readMessageNoticeUsingGet({ id: id }).then((res) => {
+      if (res.data) {
+        setMessageNum({
+          ...messageNum,
+          noticeNum: ((Number(messageNum?.noticeNum) || 0) - 1).toString(),
+        });
+        setNoticeMessages((prevMessages) => {
+          // 创建数组的浅拷贝
+          const updatedMessages = [...prevMessages];
+          // 如果index有效，则更新对象
+          if (index >= 0 && index < updatedMessages.length) {
+            // 更新已读
+            updatedMessages[index] = { ...updatedMessages[index], readTarget: 1 };
+          }
+          return updatedMessages;
+        });
+      }
+    });
+  };
+  const handleMessage = (
+    id: string | undefined,
+    index: number,
+    noticeType: number | undefined,
+    processResult: number,
+  ) => {
+    handleMessageNoticeUsingPost({ id, noticeType, processResult }).then((res) => {
+      if (res.code === 0) {
+        setNoticeMessages((prevMessages) => {
+          // 创建数组的浅拷贝
+          const updatedMessages = [...prevMessages];
+          // 如果index有效，则更新对象
+          if (index >= 0 && index < updatedMessages.length) {
+            // 更新结果
+            updatedMessages[index] = { ...updatedMessages[index], processResult: res.data };
+          }
+          return updatedMessages;
+        });
+      }
+    });
+  };
   const getFriendDetail = (type: number, item: API.FriendVo) => {
     //群聊详情
     if (Number(type) === 1) {
@@ -268,6 +315,12 @@ const Welcome: React.FC = () => {
         setFriendMessage(msgVo);
       });
     }
+  };
+  const addFriend = () => {
+    // addFriendUsingPost({ userId: id, remark: '你好' }).then((res) => {
+    //   console.log(res);
+    // });
+    setIsRemarkModalOpen(true);
   };
   //发送消息
   const sendMessage = (message: any) => {
@@ -352,9 +405,15 @@ const Welcome: React.FC = () => {
   const showAddModal = () => {
     setIsAddModalOpen(true);
   };
-
-  const handleAddOk = () => {
-    setIsAddModalOpen(false);
+  //发起好友添加申请
+  const handleAddOk = async () => {
+    alert(remark);
+    addFriendUsingPost({ userId: addFriendMessage?.uid, remark: remark }).then((res) => {
+      if (res.code===0){
+        message.success("发送成功");
+        setIsRemarkModalOpen(false);
+      }
+    });
   };
 
   const handleAddCancel = () => {
@@ -510,36 +569,42 @@ const Welcome: React.FC = () => {
         style={{ height: '100vh', paddingLeft: '0' }}
         key="2"
       >
-        <Modal footer={null} title="添加好友" open={isAddModalOpen} onOk={handleAddOk} onCancel={handleAddCancel}>
+        <Modal footer={null} title="添加好友" onCancel={handleAddCancel} open={isAddModalOpen}>
           <Search placeholder="input search text" allowClear onSearch={findUserOrGroup} />
           <Card style={{ marginTop: 10 }}>
             {addFriendMessage ? (
-              <UserAddProfile
-                friendMessage={addFriendMessage}
-                onAdd={() => alert('功能尚未开通')}
-                onMessage={() => {
-                  let sendMessageTarget = 0;
-                  for (let conversation of conversations) {
-                    if (conversation.id === addFriendMessage?.roomId) {
-                      setActiveConversation(conversation);
-                      sendMessageTarget = sendMessageTarget + 1;
+              <>
+                <Modal title="申请" open={isRemarkModalOpen} onOk={handleAddOk}>
+                  好友申请🔍：
+                  <Input value={remark} onChange={(e) => setRemark(e.target.value)} />
+                </Modal>
+                <UserAddProfile
+                  friendMessage={addFriendMessage}
+                  onAdd={() => addFriend()}
+                  onMessage={() => {
+                    let sendMessageTarget = 0;
+                    for (let conversation of conversations) {
+                      if (conversation.id === addFriendMessage?.roomId) {
+                        setActiveConversation(conversation);
+                        sendMessageTarget = sendMessageTarget + 1;
+                      }
                     }
-                  }
-                  if (sendMessageTarget === 0) {
-                    const target: API.RoomVo = {
-                      id: addFriendMessage?.roomId,
-                      userId: addFriendMessage?.uid,
-                      type: addFriendMessage?.type,
-                      roomName: addFriendMessage?.name,
-                      avatar: addFriendMessage?.avatar,
-                    };
-                    setActiveConversation(target);
-                    setConversations([target, ...conversations]);
-                  }
-                  setActiveKey('1');
-                  setIsAddModalOpen(false);
-                }}
-              />
+                    if (sendMessageTarget === 0) {
+                      const target: API.RoomVo = {
+                        id: addFriendMessage?.roomId,
+                        userId: addFriendMessage?.uid,
+                        type: addFriendMessage?.type,
+                        roomName: addFriendMessage?.name,
+                        avatar: addFriendMessage?.avatar,
+                      };
+                      setActiveConversation(target);
+                      setConversations([target, ...conversations]);
+                    }
+                    setActiveKey('1');
+                    setIsAddModalOpen(false);
+                  }}
+                />
+              </>
             ) : (
               <Empty description={'暂无此人o((>ω< ))o'} />
             )}
@@ -620,7 +685,7 @@ const Welcome: React.FC = () => {
             <FontAwesomeIcon style={{ fontSize: '26px' }} icon={faEnvelopeOpenText} />
           </Badge>
         }
-        style={{ height: '100vh'}}
+        style={{ height: '100vh' }}
         key="3"
       >
         <div
@@ -635,7 +700,7 @@ const Welcome: React.FC = () => {
           <InfiniteScroll
             dataLength={noticeMessages.length}
             next={loadMoreData}
-            hasMore={noticeMessages.length < 1}
+            hasMore={noticeMessages.length < -1}
             loader={<Skeleton avatar paragraph={{ rows: 1 }} active />}
             endMessage={<Divider plain>没有了 🤐</Divider>}
             scrollableTarget="scrollableDiv"
@@ -646,25 +711,47 @@ const Welcome: React.FC = () => {
               renderItem={(item, index) => (
                 <Card style={{ marginTop: 10 }}>
                   <List.Item
+                    onClick={() => onRead(item.id, index)}
                     style={{ padding: 20, marginTop: 10 }}
                     actions={[
-                      <a>
-                        <FontAwesomeIcon
-                          style={{ fontSize: '26px', color: 'green' }}
-                          icon={faSquareCheck}
-                        />
-                      </a>,
-                      <a>
-                        <FontAwesomeIcon
-                          style={{ fontSize: '26px', color: 'red' }}
-                          icon={faXmark}
-                        />
-                      </a>,
+                      item.processResult ? (
+                        <>{item.processResult}</>
+                      ) : (
+                        <>
+                          <a
+                            key={index}
+                            onClick={() => handleMessage(item.id, index, item?.noticeType, 1)}
+                          >
+                            <FontAwesomeIcon
+                              style={{ fontSize: '26px', color: 'green' }}
+                              icon={faSquareCheck}
+                            />
+                          </a>
+                          ,
+                          <a
+                            key={index}
+                            onClick={() => handleMessage(item.id, index, item?.noticeType, 2)}
+                          >
+                            <FontAwesomeIcon
+                              style={{ fontSize: '26px', color: 'red' }}
+                              icon={faXmark}
+                            />
+                          </a>
+                        </>
+                      ),
                     ]}
                   >
                     <List.Item.Meta
                       avatar={
-                        <Badge count={1}>
+                        <Badge
+                          count={
+                            item.readTarget === 0 ? (
+                              <FontAwesomeIcon icon={faVolumeHigh} style={{ color: 'red' }} />
+                            ) : (
+                              0
+                            )
+                          }
+                        >
                           <Avatar src={item.avatar} />
                         </Badge>
                       }

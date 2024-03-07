@@ -177,6 +177,12 @@ declare namespace API {
     type?: number;
   };
 
+  type MessageNoticeUpdateRequest = {
+    id?: string;
+    noticeType?: number;
+    processResult?: number;
+  };
+
   type MessageNumVo = {
     noticeNum?: string;
   };
@@ -192,9 +198,12 @@ declare namespace API {
   type NoticeMessageVo = {
     avatar?: string;
     createTime?: string;
+    id?: string;
     name?: string;
     noticeContent?: string;
     noticeType?: number;
+    processResult?: string;
+    readTarget?: number;
     title?: string;
     userId?: string;
   };
@@ -254,6 +263,11 @@ declare namespace API {
     searchCount?: boolean;
     size?: string;
     total?: string;
+  };
+
+  type readMessageNoticeUsingGETParams = {
+    /** id */
+    id?: string;
   };
 
   type RoomQueryRequest = {

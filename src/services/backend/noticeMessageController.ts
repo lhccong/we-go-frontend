@@ -17,10 +17,40 @@ export async function addFriendUsingPost(
   });
 }
 
+/** 消息处理 POST /api/notice/messageNotice/handle */
+export async function handleMessageNoticeUsingPost(
+  body: API.MessageNoticeUpdateRequest,
+  options?: { [key: string]: any },
+) {
+  return request<API.BaseResponseString_>('/api/notice/messageNotice/handle', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    data: body,
+    ...(options || {}),
+  });
+}
+
 /** 获取消息列表 GET /api/notice/messageNotice/list */
 export async function getMessageNoticeListUsingGet(options?: { [key: string]: any }) {
   return request<API.BaseResponseListNoticeMessageVo_>('/api/notice/messageNotice/list', {
     method: 'GET',
+    ...(options || {}),
+  });
+}
+
+/** 消息已读 GET /api/notice/messageNotice/read */
+export async function readMessageNoticeUsingGet(
+  // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
+  params: API.readMessageNoticeUsingGETParams,
+  options?: { [key: string]: any },
+) {
+  return request<API.BaseResponseBoolean_>('/api/notice/messageNotice/read', {
+    method: 'GET',
+    params: {
+      ...params,
+    },
     ...(options || {}),
   });
 }
