@@ -407,7 +407,6 @@ const Welcome: React.FC = () => {
   };
   //发起好友添加申请
   const handleAddOk = async () => {
-    alert(remark);
     addFriendUsingPost({ userId: addFriendMessage?.uid, remark: remark }).then((res) => {
       if (res.code===0){
         message.success("发送成功");

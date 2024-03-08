@@ -1,7 +1,7 @@
 import {updateMyUserUsingPost, userLogoutUsingPost} from '@/services/backend/userController';
 import { LogoutOutlined, SettingOutlined, UserOutlined } from '@ant-design/icons';
 import { history, useModel } from '@umijs/max';
-import {Avatar, Button, Form, Input, message, Modal, Space} from 'antd';
+import {Avatar, Button, Divider, Form, Input, message, Modal, Space} from 'antd';
 import { stringify } from 'querystring';
 import type { MenuInfo } from 'rc-menu/lib/interface';
 import React, {useCallback, useState} from 'react';
@@ -137,6 +137,8 @@ export const AvatarDropdown: React.FC<GlobalHeaderRightProps> = ({ menu }) => {
         onFinishFailed={onFinishFailed}
         autoComplete="off"
       >
+        账号：{currentUser.id}
+        <Divider/>
         <Form.Item
           label="名字"
           name="userName"
@@ -177,5 +179,3 @@ export const AvatarDropdown: React.FC<GlobalHeaderRightProps> = ({ menu }) => {
     </>
   );
 };
-
-export const AvatarName = () => {};
