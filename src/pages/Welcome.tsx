@@ -1,5 +1,5 @@
 import { AvatarDropdown } from '@/components/RightContent/AvatarDropdown';
-import { BACKEND_HOST_LOCAL } from '@/constants';
+import {BACKEND_HOST_LOCAL} from '@/constants';
 import {
   listFriendContentVoUsingPost,
   listMessageVoByPageUsingPost,
@@ -69,7 +69,7 @@ const Welcome: React.FC = () => {
   const [loadingMore, setLoadingMore] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isRemarkModalOpen, setIsRemarkModalOpen] = useState(false);
-  const [msgPageNum, setMsgPageNum] = useState(0);
+  const [msgPageNum, setMsgPageNum] = useState(2);
   const [activeKey, setActiveKey] = useState('1');
   const [initLoaded, setInitLoaded] = useState(false);
   const [msgTotal, setMsgTotal] = useState(0);
@@ -141,7 +141,7 @@ const Welcome: React.FC = () => {
 
   useEffect(() => {
     const tokenValue = localStorage.getItem('tokenValue');
-    const newSocket = new WebSocket('ws://127.0.0.1:8090?token=' + tokenValue);
+    const newSocket = new WebSocket('wss://qingxin.store/ws?token=' + tokenValue);
     setSocket(newSocket);
 
     // 在组件卸载时关闭WebSocket连接
@@ -336,7 +336,7 @@ const Welcome: React.FC = () => {
   const changeConversation = (newConversation: API.RoomVo) => {
     if (!activeConversation || newConversation.id !== activeConversation.id) {
       setInitLoaded(false);
-      setMsgPageNum(0);
+      setMsgPageNum(1);
       setActiveConversation({ ...newConversation, unreadNum: 0 });
       setConversations(
         conversations.map((conversation) =>
@@ -352,7 +352,7 @@ const Welcome: React.FC = () => {
   // 组件加载时和页码变化时触发数据获取
   useEffect(() => {
     listRoomVoByPageUsingPost({
-      pageSize: 10,
+      pageSize: 100,
       current: 0,
     }).then((res) => {
       if (res.code === 0) {
@@ -370,10 +370,11 @@ const Welcome: React.FC = () => {
     }
     if (initLoaded && activeConversation && messages.length < msgTotal) {
       setLoadingMore(true);
-      setMsgPageNum(msgPageNum + 1);
+      const msgPageNumTemp = msgPageNum + 1
+      setMsgPageNum(msgPageNumTemp);
       listMessageVoByPageUsingPost({
-        current: msgPageNum,
-        pageSize: 10,
+        current: msgPageNumTemp,
+        pageSize: 30,
         roomId: activeConversation.id,
       }).then((res) => {
         if (res.code === 0) {
