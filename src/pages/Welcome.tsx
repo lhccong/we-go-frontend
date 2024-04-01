@@ -141,7 +141,7 @@ const Welcome: React.FC = () => {
 
   useEffect(() => {
     const tokenValue = localStorage.getItem('tokenValue');
-    const newSocket = new WebSocket('wss://qingxin.store/ws?token=' + tokenValue);
+    const newSocket = new WebSocket('ws://localhost:8090?token=' + tokenValue);
     setSocket(newSocket);
 
     // 在组件卸载时关闭WebSocket连接
