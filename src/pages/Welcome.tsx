@@ -145,7 +145,7 @@ const Welcome: React.FC = () => {
     const isDev = process.env.NODE_ENV === 'development';
     const tokenValue = localStorage.getItem('tokenValue');
     const newSocket = new WebSocket(
-      isDev ? BACKEND_HOST_LOCAL_WS : BACKEND_HOST_PROD_WS + tokenValue,
+      isDev ? BACKEND_HOST_LOCAL_WS + tokenValue : BACKEND_HOST_PROD_WS + tokenValue,
     );
     setSocket(newSocket);
 
